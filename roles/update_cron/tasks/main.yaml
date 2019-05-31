@@ -1,0 +1,26 @@
+---
+- name: check if cron file for user centos available
+  shell: ls -l /var/spool/cron/centos
+  register: file_exist
+  become: true
+  ignore_errors: True
+
+- name: create cron file
+  shell: touch /var/spool/cron/centos && chown centos:centos /var/spool/cron/centos && chmod 600 /var/spool/cron/centos
+  become: true
+  when: file_exist is failed
+
+- name: check cron file content
+  shell: cat /var/spool/cron/centos | grep "sudo docker system prune -f"
+  register: file_content
+  become: true
+  when: file_exist is succeeded
+
+- name: add docker system prun in cron
+  shell: echo "5 */1 * * * sudo docker system prune -f" >> /var/spool/cron/centos
+  become: true
+  when: file_content is failed
+
+- name: add delete old images in cron tab
+  shell: echo "5 1 * * * sudo docker images | grep month | awk '{print $3}' | xargs sudo docker rmi" >> /var/spool/cron/centos
+  become: true
